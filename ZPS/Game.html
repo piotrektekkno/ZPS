@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+
+<meta charset="utf-8" />
+
+<title>WebSocket Test</title>
+
+<script language="javascript" type="text/javascript">
+  var  serverAddres = "ws://localhost:8000/";
+  var serverAddresTxt; document.getElementById('serverAddresTxt');
+  var serverConnStatusTxt; document.getElementById('serverConnStatusTxt');
+  var gameStarted = false; 
+  var boardSize = {"req_type":"boardSize", "x_size":0, "y_size":0};
+  var myPosition = {"req_type":"myPosition", "x_pos":0, "y_pos":0};
+
+  function init() {
+
+    serverAddresTxt =document.getElementById('serverAddresTxt');
+    serverConnStatusTxt = document.getElementById('serverConnStatusTxt');
+    
+    serverAddresTxt.value = serverAddres;
+    doConnect();
+
+  }
+
+  function doConnect()
+  {
+    websocket = new WebSocket(serverAddres);
+    websocket.onopen = function(evt) { onOpen(evt) };
+    websocket.onclose = function(evt) { onClose(evt) };
+    websocket.onmessage = function(evt) { onMessage(evt) };
+    websocket.onerror = function(evt) { onError(evt) };
+  }
+
+  function onOpen(evt)
+  {
+    serverConnStatusTxt.value = "Połączony"
+    gameStarted = true;
+  }
+
+  function onClose(evt)
+  {
+    serverConnStatusTxt.value = "Rozłączony"
+    gameStarted = false;
+  }
+
+  function onMessage(evt)
+  {
+    var o = JSON.parse(evt.data);
+    if(o.req_type == 'boardSize')
+      setBoardGameSize(o.x_size, o.y_size);
+    
+  }
+
+  function onError(evt)
+  {
+    serverConnStatusTxt.value = "Błąd połączenia: " + evt.data;
+    gameStarted = false;
+	  websocket.close();
+  }
+
+  function doSend(message)
+  {
+    websocket.send(message);
+  }
+
+  window.addEventListener("load", init, false);
+ 
+   function sendText(v) {
+		doSend(v);
+   }
+
+   function doDisconnect() {
+		  websocket.close();
+   }
+
+</script>
+<body>
+
+<canvas id="canvas" style="background:rgba(0, 200, 0, 1)">Your browser does not support the canvas element.</canvas>
+<br><input type="button" name=starGame value="Start" onClick="startGame();" >
+<input type="button" name=endGame value="Koniec" onClick="endGame();" >
+<br>
+<b>Pozycja: </b><input type="text" readonly id="positionTxt" value="">
+<b>Server: </b><input type="text" readonly id="serverAddresTxt" value="">
+<b>Status połaczenia: </b><input type="text" readonly id="serverConnStatusTxt" value="Niepołączony">
+</body>
+<script language="javascript" type="text/javascript">
+
+
+var x_pos = 10, y_pos = 10; // player position
+var c_width_init = 100, c_height_init = 100;
+
+window.addEventListener("keydown",function(e) { keyPressed(e); e.preventDefault(); }, false);
+
+var positionText = document.getElementById('positionTxt');
+var can = document.getElementById('canvas');
+var ctx = can.getContext('2d');
+
+can.height = c_height_init; 
+can.width = c_width_init;
+
+function keyPressed(e){
+
+  if(!gameStarted){
+    positionText.value = "Gra jest nierozpoczęta";
+    return;
+  }
+
+  if (e.keyCode == '38') {
+      // up arrow
+    if(y_pos > 0)
+      y_pos--;
+  }
+  else if (e.keyCode == '40') {
+      // down arrow
+    if(y_pos < can.height)
+      y_pos++;
+  }
+  else if (e.keyCode == '37') {
+       // left arrow
+    if(x_pos > 0 )
+      x_pos--;
+  }
+    else if (e.keyCode == '39') {
+       // right arrow
+    if(x_pos < can.width )
+       x_pos++;
+  }
+  draw();
+  positionText.value = "x(" + x_pos + ")  y(" + y_pos + ")";
+  myPosition.x_pos = x_pos;
+  myPosition.y_pos = y_pos;
+  sendText(JSON.stringify(myPosition))
+}  
+
+function draw() {
+
+     ctx.beginPath();
+     ctx.arc(x_pos, y_pos, 8, 0, 2 * Math.PI);
+     ctx.fillStyle = 'rgba(0,0,254,1)';
+     ctx.fill();
+     ctx.fillStyle = "rgba(0,200,0,0.4)";
+     ctx.fillRect(0, 0, can.width, can.height);
+ }
+ function startGame(){
+   var str = JSON.stringify(boardSize)
+  sendText(str);
+ }
+
+ function endGame(){
+  doDisconnect();
+ }
+
+ function setBoardGameSize(x, y){
+  can.width = x;
+  can.height = y;
+ }
+ draw();
+ 
+
+</script>
+
+</html> 
