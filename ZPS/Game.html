@@ -2,28 +2,81 @@
 
 <meta charset="utf-8" />
 
-<title>WebSocket Test</title>
+<title>Game</title>
 
 <script language="javascript" type="text/javascript">
-  var  serverAddres = "ws://localhost:8000/";
-  var serverAddresTxt; document.getElementById('serverAddresTxt');
-  var serverConnStatusTxt; document.getElementById('serverConnStatusTxt');
-  var gameStarted = false; 
-  var boardSize = {"req_type":"boardSize", "x_size":0, "y_size":0};
-  var myPosition = {"req_type":"myPosition", "x_pos":0, "y_pos":0};
+  var serverAddres = "ws://46.41.137.21:8000/";
+  var serverAddresTxt;
+  var nickTxt;
+  var serverConnStatusTxt;
+  var playerConnected = false; 
+  var playerUid;
+  var payerNick = '';
+  var x_pos = 10, y_pos = 10; // player position
+  var c_width_init = 100, c_height_init = 100;
 
-  function init() {
+  var oJsonConnecOut = {"msg_code":"connect", uid:"", nick:""};
+  var oJsonWelcomeMsgIn = new Object();
+  var oJsonMyPositionOut = {"msg_code":"player_pos", "x":0, "y":0};
 
-    serverAddresTxt =document.getElementById('serverAddresTxt');
+  function initGame(){
+    serverAddresTxt = document.getElementById('serverAddresTxt');
     serverConnStatusTxt = document.getElementById('serverConnStatusTxt');
-    
+    nickTxt = document.getElementById('nickTxt');
+    pointsTxt = document.getElementById('pointsTxt');
+    bombsTxt = document.getElementById('bombsTxt');
     serverAddresTxt.value = serverAddres;
     doConnect();
-
   }
 
-  function doConnect()
-  {
+  function getRndInteger(min, max) {
+    return Math.floor(Math.random() * (max - min) ) + min;
+  }
+
+  function checkNick(){
+    if(!nickTxt.value || (nickTxt.value).length < 5 || (nickTxt.value).length > 10) {
+      alert("Nick musi mieć od 5 do 10 znaków");
+      return false;
+    }
+      return true;
+  }
+
+  function wait(ms){
+    var start = new Date().getTime();
+    var end = start;
+    while(end < start + ms) {
+      end = new Date().getTime();
+    }
+    return true;
+  }
+
+  function startGame(){
+
+    if(!checkNick())
+      return false;
+      
+    oJsonConnecOut.nick = nickTxt.value;
+    //doConnect();
+    //alert("Dołacznie do gry");
+    if(playerConnected){      
+      sendText(JSON.stringify(oJsonConnecOut));
+    }
+  }
+
+  function mangeWelcomeMessage(o){
+    oJsonWelcomeMsgIn = o;
+    bombsTxt.value = oJsonWelcomeMsgIn.bombs_amount;
+    pointsTxt.value = oJsonWelcomeMsgIn.current_score;
+    setBoardGameSize(oJsonWelcomeMsgIn.size_x, oJsonWelcomeMsgIn.size_y);
+    x_pos = getRndInteger(1,oJsonWelcomeMsgIn.size_x)
+    y_pos = getRndInteger(1,oJsonWelcomeMsgIn.size_y)
+    oJsonMyPositionOut.x = x_pos;
+    oJsonMyPositionOut.y = y_pos;
+    sendText(JSON.stringify(oJsonMyPositionOut))
+    draw();
+  }
+
+  function doConnect(){
     websocket = new WebSocket(serverAddres);
     websocket.onopen = function(evt) { onOpen(evt) };
     websocket.onclose = function(evt) { onClose(evt) };
@@ -34,27 +87,29 @@
   function onOpen(evt)
   {
     serverConnStatusTxt.value = "Połączony"
-    gameStarted = true;
+    playerConnected = true;
   }
 
   function onClose(evt)
   {
     serverConnStatusTxt.value = "Rozłączony"
-    gameStarted = false;
+    playerConnected = false;
   }
 
   function onMessage(evt)
   {
     var o = JSON.parse(evt.data);
-    if(o.req_type == 'boardSize')
-      setBoardGameSize(o.x_size, o.y_size);
+    if(o.msg_code == 'welcome_msg'){
+      mangeWelcomeMessage(o);
+    }
+  
     
   }
 
   function onError(evt)
   {
     serverConnStatusTxt.value = "Błąd połączenia: " + evt.data;
-    gameStarted = false;
+    playerConnected = false;
 	  websocket.close();
   }
 
@@ -63,32 +118,40 @@
     websocket.send(message);
   }
 
-  window.addEventListener("load", init, false);
+  window.addEventListener("load", initGame, false);
  
    function sendText(v) {
-		doSend(v);
+		  doSend(v);
    }
 
    function doDisconnect() {
 		  websocket.close();
    }
 
+   function getNick(){
+      nickTxt.value = prompt("Wpisz nick:", "Wpisz nick od 5 do 10 znaków");
+      checkNick();
+   }
+
+
 </script>
 <body>
 
 <canvas id="canvas" style="background:rgba(0, 200, 0, 1)">Your browser does not support the canvas element.</canvas>
-<br><input type="button" name=starGame value="Start" onClick="startGame();" >
-<input type="button" name=endGame value="Koniec" onClick="endGame();" >
 <br>
-<b>Pozycja: </b><input type="text" readonly id="positionTxt" value="">
-<b>Server: </b><input type="text" readonly id="serverAddresTxt" value="">
+<br><input type="button" name=starGame value="Start" onClick="startGame()" >
+<input type="button" name=endGame value="Koniec" onClick="endGame();" >
+<b>Nick:</b><input type="text"  id="nickTxt" value="assssa" onClick="getNick();">
 <b>Status połaczenia: </b><input type="text" readonly id="serverConnStatusTxt" value="Niepołączony">
+<br><br>
+<b>Punkty: </b><input type="text" readonly id="pointsTxt" value="">
+<b>Ilość bomb: </b><input type="text" readonly id="bombsTxt" value="">
+<b>Server: </b><input type="text" readonly id="serverAddresTxt" value="">
+<b>Pozycja: </b><input type="text" readonly id="positionTxt" value="">
 </body>
 <script language="javascript" type="text/javascript">
 
 
-var x_pos = 10, y_pos = 10; // player position
-var c_width_init = 100, c_height_init = 100;
 
 window.addEventListener("keydown",function(e) { keyPressed(e); e.preventDefault(); }, false);
 
@@ -101,7 +164,7 @@ can.width = c_width_init;
 
 function keyPressed(e){
 
-  if(!gameStarted){
+  if(!playerConnected){
     positionText.value = "Gra jest nierozpoczęta";
     return;
   }
@@ -128,9 +191,9 @@ function keyPressed(e){
   }
   draw();
   positionText.value = "x(" + x_pos + ")  y(" + y_pos + ")";
-  myPosition.x_pos = x_pos;
-  myPosition.y_pos = y_pos;
-  sendText(JSON.stringify(myPosition))
+  oJsonMyPositionOut.x = x_pos;
+  oJsonMyPositionOut.y = y_pos;
+  sendText(JSON.stringify(oJsonMyPositionOut))
 }  
 
 function draw() {
@@ -142,10 +205,13 @@ function draw() {
      ctx.fillStyle = "rgba(0,200,0,0.4)";
      ctx.fillRect(0, 0, can.width, can.height);
  }
+ /*
  function startGame(){
-   var str = JSON.stringify(boardSize)
-  sendText(str);
+   //initGame();
+   //var str = JSON.stringify(boardSize)
+  //sendText(str);
  }
+ */
 
  function endGame(){
   doDisconnect();
