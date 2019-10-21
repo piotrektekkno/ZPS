@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+
+<meta charset="utf-8" />
+
+<title>Game</title>
+
+<script language="javascript" type="text/javascript">
+  var serverAddres = "ws://46.41.137.21:8000/";
+  var serverAddresTxt;
+  var nickTxt;
+  var serverConnStatusTxt;
+  var playerConnected = false; 
+  var playerUid;
+  var payerNick = '';
+  var x_pos = 10, y_pos = 10; // player position
+  var c_width_init = 100, c_height_init = 100;
+
+  var oJsonConnecOut = {"msg_code":"connect", uid:"", nick:""};
+  var oJsonWelcomeMsgIn = new Object();
+  var oJsonMyPositionOut = {"msg_code":"player_pos", "x":0, "y":0};
+
+  function initGame(){
+    serverAddresTxt = document.getElementById('serverAddresTxt');
+    serverConnStatusTxt = document.getElementById('serverConnStatusTxt');
+    nickTxt = document.getElementById('nickTxt');
+    pointsTxt = document.getElementById('pointsTxt');
+    bombsTxt = document.getElementById('bombsTxt');
+    serverAddresTxt.value = serverAddres;
+    doConnect();
+  }
+
+  function getRndInteger(min, max) {
+    return Math.floor(Math.random() * (max - min) ) + min;
+  }
+
+  function checkNick(){
+    if(!nickTxt.value || (nickTxt.value).length < 5 || (nickTxt.value).length > 10) {
+      alert("Nick musi mieć od 5 do 10 znaków");
+      return false;
+    }
+      return true;
+  }
+
+  function wait(ms){
+    var start = new Date().getTime();
+    var end = start;
+    while(end < start + ms) {
+      end = new Date().getTime();
+    }
+    return true;
+  }
+
+  function startGame(){
+
+    if(!checkNick())
+      return false;
+      
+    oJsonConnecOut.nick = nickTxt.value;
+    //doConnect();
+    //alert("Dołacznie do gry");
+    if(playerConnected){      
+      sendText(JSON.stringify(oJsonConnecOut));
+    }
+  }
+
+  function mangeWelcomeMessage(o){
+    oJsonWelcomeMsgIn = o;
+    bombsTxt.value = oJsonWelcomeMsgIn.bombs_amount;
+    pointsTxt.value = oJsonWelcomeMsgIn.current_score;
+    setBoardGameSize(oJsonWelcomeMsgIn.size_x, oJsonWelcomeMsgIn.size_y);
+    x_pos = getRndInteger(1,oJsonWelcomeMsgIn.size_x)
+    y_pos = getRndInteger(1,oJsonWelcomeMsgIn.size_y)
+    oJsonMyPositionOut.x = x_pos;
+    oJsonMyPositionOut.y = y_pos;
+    sendText(JSON.stringify(oJsonMyPositionOut))
+    draw();
+  }
+
+  function doConnect(){
+    websocket = new WebSocket(serverAddres);
+    websocket.onopen = function(evt) { onOpen(evt) };
+    websocket.onclose = function(evt) { onClose(evt) };
+    websocket.onmessage = function(evt) { onMessage(evt) };
+    websocket.onerror = function(evt) { onError(evt) };
+  }
+
+  function onOpen(evt)
+  {
+    serverConnStatusTxt.value = "Połączony"
+    playerConnected = true;
+  }
+
+  function onClose(evt)
+  {
+    serverConnStatusTxt.value = "Rozłączony"
+    playerConnected = false;
+  }
+
+  function onMessage(evt)
+  {
+    var o = JSON.parse(evt.data);
+    if(o.msg_code == 'welcome_msg'){
+      mangeWelcomeMessage(o);
+    }
+  
+    
+  }
+
+  function onError(evt)
+  {
+    serverConnStatusTxt.value = "Błąd połączenia: " + evt.data;
+    playerConnected = false;
+	  websocket.close();
+  }
+
+  function doSend(message)
+  {
+    websocket.send(message);
+  }
+
+  window.addEventListener("load", initGame, false);
+ 
+   function sendText(v) {
+		  doSend(v);
+   }
+
+   function doDisconnect() {
+		  websocket.close();
+   }
+
+   function getNick(){
+      nickTxt.value = prompt("Wpisz nick:", "Wpisz nick od 5 do 10 znaków");
+      checkNick();
+   }
+
+
+</script>
+<body>
+
+<canvas id="canvas" style="background:rgba(0, 200, 0, 1)">Your browser does not support the canvas element.</canvas>
+<br>
+<br><input type="button" name=starGame value="Start" onClick="startGame()" >
+<input type="button" name=endGame value="Koniec" onClick="endGame();" >
+<b>Nick:</b><input type="text"  id="nickTxt" value="assssa" onClick="getNick();">
+<b>Status połaczenia: </b><input type="text" readonly id="serverConnStatusTxt" value="Niepołączony">
+<br><br>
+<b>Punkty: </b><input type="text" readonly id="pointsTxt" value="">
+<b>Ilość bomb: </b><input type="text" readonly id="bombsTxt" value="">
+<b>Server: </b><input type="text" readonly id="serverAddresTxt" value="">
+<b>Pozycja: </b><input type="text" readonly id="positionTxt" value="">
+</body>
+<script language="javascript" type="text/javascript">
+
+
+
+window.addEventListener("keydown",function(e) { keyPressed(e); e.preventDefault(); }, false);
+
+var positionText = document.getElementById('positionTxt');
+var can = document.getElementById('canvas');
+var ctx = can.getContext('2d');
+
+can.height = c_height_init; 
+can.width = c_width_init;
+
+function keyPressed(e){
+
+  if(!playerConnected){
+    positionText.value = "Gra jest nierozpoczęta";
+    return;
+  }
+
+  if (e.keyCode == '38') {
+      // up arrow
+    if(y_pos > 0)
+      y_pos--;
+  }
+  else if (e.keyCode == '40') {
+      // down arrow
+    if(y_pos < can.height)
+      y_pos++;
+  }
+  else if (e.keyCode == '37') {
+       // left arrow
+    if(x_pos > 0 )
+      x_pos--;
+  }
+    else if (e.keyCode == '39') {
+       // right arrow
+    if(x_pos < can.width )
+       x_pos++;
+  }
+  draw();
+  positionText.value = "x(" + x_pos + ")  y(" + y_pos + ")";
+  oJsonMyPositionOut.x = x_pos;
+  oJsonMyPositionOut.y = y_pos;
+  sendText(JSON.stringify(oJsonMyPositionOut))
+}  
+
+function draw() {
+
+     ctx.beginPath();
+     ctx.arc(x_pos, y_pos, 8, 0, 2 * Math.PI);
+     ctx.fillStyle = 'rgba(0,0,254,1)';
+     ctx.fill();
+     ctx.fillStyle = "rgba(0,200,0,0.4)";
+     ctx.fillRect(0, 0, can.width, can.height);
+ }
+ /*
+ function startGame(){
+   //initGame();
+   //var str = JSON.stringify(boardSize)
+  //sendText(str);
+ }
+ */
+
+ function endGame(){
+  doDisconnect();
+ }
+
+ function setBoardGameSize(x, y){
+  can.width = x;
+  can.height = y;
+ }
+ draw();
+ 
+
+</script>
+
+</html> 
