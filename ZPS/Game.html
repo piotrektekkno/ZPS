@@ -15,6 +15,8 @@
   var uidTxt = "";
   var x_pos = 10, y_pos = 10; // player position
   var c_width_init = 100, c_height_init = 100;
+  var playersObjArr = [];
+  var arrayColors = ["orange", "black", "silver", "yellow", "red"];
 
   var oJsonConnecOut = {"msg_code":"connect", uid:"", nick:""};
   var oJsonWelcomeMsgIn = new Object();
@@ -68,7 +70,18 @@
   }
 
   function drawOtherPlayers(o){
-    alert(o.nick)
+    if(!playersObjArr[o.nick]){
+      var obj = new Object();
+      obj.playerColor = arrayColors.shift();
+      obj.x = o.x;
+      obj.y = o.y;
+      obj.nick = o.nick;
+      playersObjArr[o.nick] = obj;
+    } else {
+      playersObjArr[o.nick].x = o.x;
+      playersObjArr[o.nick].y = o.y;
+    }
+    draw();
   }
 
   function mangeWelcomeMessage(o){
@@ -153,7 +166,7 @@
 <br>
 <br><input type="button" name=starGame value="Start" onClick="startGame()" >
 <input type="button" name=endGame value="Koniec" onClick="endGame();" >
-<b>Nick:</b><input type="text"  id="nickTxt" value="assssa" onClick="getNick();">
+<b>Nick:</b><input type="text"  id="nickTxt" value="" onClick="getNick();">
 <b>Status połaczenia: </b><input type="text" readonly id="serverConnStatusTxt" value="Niepołączony">
 <br><br>
 <b>Punkty: </b><input type="text" readonly id="pointsTxt" value="">
@@ -211,12 +224,21 @@ function keyPressed(e){
 
 function draw() {
 
-     ctx.beginPath();
-     ctx.arc(x_pos, y_pos, 8, 0, 2 * Math.PI);
-     ctx.fillStyle = 'rgba(0,0,254,1)';
-     ctx.fill();
-     ctx.fillStyle = "rgba(0,200,0,0.4)";
-     ctx.fillRect(0, 0, can.width, can.height);
+  ctx.beginPath();
+  ctx.arc(x_pos, y_pos, 8, 0, 2 * Math.PI);
+  ctx.fillStyle = 'blue';
+  ctx.fill();
+  ctx.stroke();
+  
+  for (var i in playersObjArr) {
+    ctx.beginPath();
+    ctx.arc(playersObjArr[i].x, playersObjArr[i].y, 8, 0, 2 * Math.PI);
+    ctx.fillStyle = playersObjArr[i].playerColor;
+    ctx.fill();
+    ctx.stroke();
+  }
+    ctx.fillStyle = "rgba(0,200,0,0.4)";
+    ctx.fillRect(0, 0, can.width, can.height);
  }
  /*
  function startGame(){
