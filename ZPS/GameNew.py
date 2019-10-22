@@ -2,6 +2,9 @@ from SimpleWebSocketServer import SimpleWebSocketServer, WebSocket
 import json
 
 clients = []
+clientCnt = [0]
+globalObj = {}
+globalObj["playerCount"] = 0
 
 class GameServer(WebSocket):
 
@@ -9,21 +12,34 @@ class GameServer(WebSocket):
       boardSizeY = 600
       playerId = 0
       bombs = 5
+      score = 0
+      myNick = ""
 
       def checkPlayer(self, msg):
-         print(msg)
+         #print(msg)
          msgWelcome = {}
          if msg["uid"] == "":
             msgWelcome["msg_code"] = "welcome_msg"
             msgWelcome['size_x'] = self.boardSizeX
             msgWelcome["size_y"] = self.boardSizeY
-            msgWelcome["client_uid"] = "ID" + str(self.playerId)
-            msgWelcome["bombs_amount"] = 5
-            msgWelcome["current_score"] = 0
+            msgWelcome["client_uid"] = "ID" + str(globalObj["playerCount"])
+            msgWelcome["bombs_amount"] = self.bombs
+            msgWelcome["current_score"] = self.score
             self.sendMessage(json.dumps(msgWelcome))
-            self.playerId = self.playerId + 1;
-         print("Working2")
+            globalObj["playerCount"] = globalObj["playerCount"] + 1
+            self.myNick = msg["nick"]
 
+      def resendPlayerPosition(self, msg):
+         msgPosition = {}
+         msgPosition["msg_code"] = "player_pos"
+         msgPosition["nick"] = self.myNick
+         msgPosition["x"] = msg["x"]
+         msgPosition["y"] = msg["y"]
+
+         for client in clients:
+            if client != self:
+               client.sendMessage(json.dumps(msgPosition))
+      
 
       def handleMessage(self):
 
@@ -32,6 +48,9 @@ class GameServer(WebSocket):
 
          if msgFromPlayer["msg_code"] == "connect":
             self.checkPlayer(msgFromPlayer)
+
+         if msgFromPlayer["msg_code"] == "player_pos":
+            self.resendPlayerPosition(msgFromPlayer)
 
          #for client in clients:
          #   if client != self:

@@ -12,6 +12,7 @@
   var playerConnected = false; 
   var playerUid;
   var payerNick = '';
+  var uidTxt = "";
   var x_pos = 10, y_pos = 10; // player position
   var c_width_init = 100, c_height_init = 100;
 
@@ -25,6 +26,7 @@
     nickTxt = document.getElementById('nickTxt');
     pointsTxt = document.getElementById('pointsTxt');
     bombsTxt = document.getElementById('bombsTxt');
+    uidTxt = document.getElementById('uidTxt');
     serverAddresTxt.value = serverAddres;
     doConnect();
   }
@@ -60,7 +62,13 @@
     //alert("Dołacznie do gry");
     if(playerConnected){      
       sendText(JSON.stringify(oJsonConnecOut));
+    } else {
+      alert("Nie jestes połączony z serwerem");
     }
+  }
+
+  function drawOtherPlayers(o){
+    alert(o.nick)
   }
 
   function mangeWelcomeMessage(o){
@@ -72,6 +80,7 @@
     y_pos = getRndInteger(1,oJsonWelcomeMsgIn.size_y)
     oJsonMyPositionOut.x = x_pos;
     oJsonMyPositionOut.y = y_pos;
+    uidTxt.value = oJsonWelcomeMsgIn.client_uid;
     sendText(JSON.stringify(oJsonMyPositionOut))
     draw();
   }
@@ -102,7 +111,10 @@
     if(o.msg_code == 'welcome_msg'){
       mangeWelcomeMessage(o);
     }
-  
+    
+    if(o.msg_code == 'player_pos'){
+      drawOtherPlayers(o);
+    }
     
   }
 
@@ -148,6 +160,7 @@
 <b>Ilość bomb: </b><input type="text" readonly id="bombsTxt" value="">
 <b>Server: </b><input type="text" readonly id="serverAddresTxt" value="">
 <b>Pozycja: </b><input type="text" readonly id="positionTxt" value="">
+<b>UID: </b><input type="text" readonly id="uidTxt" value="">
 </body>
 <script language="javascript" type="text/javascript">
 
