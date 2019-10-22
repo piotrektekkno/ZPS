@@ -11,7 +11,7 @@
   var serverConnStatusTxt;
   var playerConnected = false; 
   var playerUid;
-  var payerNick = '';
+  var playerNick = '';
   var uidTxt = "";
   var x_pos = 10, y_pos = 10; // player position
   var c_width_init = 100, c_height_init = 100;
@@ -42,7 +42,8 @@
       alert("Nick musi mieć od 5 do 10 znaków");
       return false;
     }
-      return true;
+    playerNick = nickTxt.value;
+    return true;
   }
 
   function wait(ms){
@@ -77,6 +78,7 @@
       obj.y = o.y;
       obj.nick = o.nick;
       playersObjArr[o.nick] = obj;
+      sendText(JSON.stringify(oJsonMyPositionOut));
     } else {
       playersObjArr[o.nick].x = o.x;
       playersObjArr[o.nick].y = o.y;
@@ -227,6 +229,9 @@ function draw() {
   ctx.beginPath();
   ctx.arc(x_pos, y_pos, 8, 0, 2 * Math.PI);
   ctx.fillStyle = 'blue';
+  ctx.font = "15px Arial";
+  if(playerNick)
+    ctx.strokeText(playerNick, x_pos + 10, y_pos); 
   ctx.fill();
   ctx.stroke();
   
@@ -234,6 +239,7 @@ function draw() {
     ctx.beginPath();
     ctx.arc(playersObjArr[i].x, playersObjArr[i].y, 8, 0, 2 * Math.PI);
     ctx.fillStyle = playersObjArr[i].playerColor;
+    ctx.strokeText(playersObjArr[i].nick, playersObjArr[i].x + 10, playersObjArr[i].y);
     ctx.fill();
     ctx.stroke();
   }
