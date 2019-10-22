@@ -51,7 +51,6 @@ class GameServer(WebSocket):
 
          if msgFromPlayer["msg_code"] == "player_pos":
             self.resendPlayerPosition(msgFromPlayer)
-
          #for client in clients:
          #   if client != self:
          #      client.sendMessage(self.address[0] + u' - ' + self.data)
