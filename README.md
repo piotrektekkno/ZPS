@@ -7,4 +7,4 @@ Zaawansowane Programowanie Sieciowe - projekt
 - Przycisk rozłącz zamyka połączenie
 - Przy sterowaniu strzalkami dane o pozycji są wysylane na serwer oraz wyswietlane
 - Połaczenie z serwerem powinno nastąpic po otworzeniu Game.html
- -Plik serwera Game.py
+ -Plik serwera GameNew.py
