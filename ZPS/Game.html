@@ -13,14 +13,18 @@
   var playerUid;
   var playerNick = '';
   var uidTxt = "";
+  var bombExplodeTimeTxt = "";
   var x_pos = 10, y_pos = 10; // player position
   var c_width_init = 100, c_height_init = 100;
   var playersObjArr = [];
+  var bomsObjArr = [];
   var arrayColors = ["orange", "black", "silver", "yellow", "red"];
 
   var oJsonConnecOut = {"msg_code":"connect", uid:"", nick:""};
+  var oJsonKilledMe = {"msg_code":"bomb_killed_me"};
   var oJsonWelcomeMsgIn = new Object();
   var oJsonMyPositionOut = {"msg_code":"player_pos", "x":0, "y":0};
+  var oJsonMPlayerPlantBombOut = {"msg_code":"player_plant_bomb", "x":0, "y":0, "time_to_explode": 0};
 
   function initGame(){
     serverAddresTxt = document.getElementById('serverAddresTxt');
@@ -29,6 +33,7 @@
     pointsTxt = document.getElementById('pointsTxt');
     bombsTxt = document.getElementById('bombsTxt');
     uidTxt = document.getElementById('uidTxt');
+    bombExplodeTimeTxt = document.getElementById('bombExplodeTime');
     serverAddresTxt.value = serverAddres;
     doConnect();
   }
@@ -86,6 +91,29 @@
     draw();
   }
 
+  function plantBomb(o){
+    var obj = new Object();
+      obj.bomUid = o.bomb_uid;
+      obj.x = o.x;
+      obj.y = o.y;
+      obj.bombsToExplode = true;
+      bomsObjArr[o.bomb_uid] = obj;
+      draw();
+  }
+
+  function bombExploded(o){
+    bomsObjArr[o.bomb_uid].bombsToExplode = false;
+   
+    if ( Math.abs(bomsObjArr[o.bomb_uid].x -x_pos) <= o.x_range &&
+         Math.abs(bomsObjArr[o.bomb_uid].y -y_pos) <= o.y_range) {
+      sendText(JSON.stringify(oJsonKilledMe))
+      x_pos = -10;
+      y_pos = -10;
+      alert("Zostales zabity")
+    }
+    draw();
+  }
+
   function mangeWelcomeMessage(o){
     oJsonWelcomeMsgIn = o;
     bombsTxt.value = oJsonWelcomeMsgIn.bombs_amount;
@@ -98,6 +126,25 @@
     uidTxt.value = oJsonWelcomeMsgIn.client_uid;
     sendText(JSON.stringify(oJsonMyPositionOut))
     draw();
+  }
+
+  function putBomb(){
+    uidTxt = document.getElementById('uidTxt');
+    var bombExpldTime = parseInt(bombExplodeTimeTxt.value, 10);
+    var bQty = parseInt(bombsTxt.value, 10)
+    if( bQty < 1){
+      alert("Nie masz bomb");
+      return;
+    }
+
+    bQty--;
+    bombsTxt.value = bQty;
+    oJsonMPlayerPlantBombOut.x = x_pos;
+    oJsonMPlayerPlantBombOut.y = y_pos;
+    oJsonMPlayerPlantBombOut.time_to_explode = bombExpldTime;
+
+    sendText(JSON.stringify(oJsonMPlayerPlantBombOut))
+  
   }
 
   function doConnect(){
@@ -129,6 +176,14 @@
     
     if(o.msg_code == 'player_pos'){
       drawOtherPlayers(o);
+    }
+
+    if(o.msg_code == 'Bomb has been planted'){
+      plantBomb(o);
+    }
+
+    if(o.msg_code == 'Bomb exploded'){
+      bombExploded(o);
     }
     
   }
@@ -170,9 +225,10 @@
 <input type="button" name=endGame value="Koniec" onClick="endGame();" >
 <b>Nick:</b><input type="text"  id="nickTxt" value="" onClick="getNick();">
 <b>Status połaczenia: </b><input type="text" readonly id="serverConnStatusTxt" value="Niepołączony">
+<b>Ilość bomb: </b><input type="text" maxlength="2" size="2" readonly id="bombsTxt" value="">
+<b>Czas wybuchu: </b><input maxlength="2" size="2" type="text"  type="number" min="0" step="1" id="bombExplodeTime" value="10"><b>s</b>
 <br><br>
 <b>Punkty: </b><input type="text" readonly id="pointsTxt" value="">
-<b>Ilość bomb: </b><input type="text" readonly id="bombsTxt" value="">
 <b>Server: </b><input type="text" readonly id="serverAddresTxt" value="">
 <b>Pozycja: </b><input type="text" readonly id="positionTxt" value="">
 <b>UID: </b><input type="text" readonly id="uidTxt" value="">
@@ -212,10 +268,14 @@ function keyPressed(e){
     if(x_pos > 0 )
       x_pos--;
   }
-    else if (e.keyCode == '39') {
+  else if (e.keyCode == '39') {
        // right arrow
     if(x_pos < can.width )
        x_pos++;
+  }
+  else if (e.keyCode == '32') {
+      putBomb();
+      return;
   }
   draw();
   positionText.value = "x(" + x_pos + ")  y(" + y_pos + ")";
@@ -227,6 +287,12 @@ function keyPressed(e){
 function draw() {
 
   ctx.beginPath();
+  ctx.fillStyle = "green";
+  ctx.fillRect(0, 0, can.width, can.height);
+  ctx.stroke();
+
+
+  ctx.beginPath();
   ctx.arc(x_pos, y_pos, 8, 0, 2 * Math.PI);
   ctx.fillStyle = 'blue';
   ctx.font = "15px Arial";
@@ -234,17 +300,26 @@ function draw() {
     ctx.strokeText(playerNick, x_pos + 10, y_pos); 
   ctx.fill();
   ctx.stroke();
+
+  for (var b in bomsObjArr){
+    if(bomsObjArr[b].bombsToExplode == true){
+      ctx.beginPath();
+      ctx.font = "30px Wingdings";
+      ctx.fillStyle = "red";
+      ctx.strokeText("M", bomsObjArr[b].x + 10, bomsObjArr[b].y);
+    }
+  }
   
   for (var i in playersObjArr) {
     ctx.beginPath();
+    ctx.font = "15px Arial";
     ctx.arc(playersObjArr[i].x, playersObjArr[i].y, 8, 0, 2 * Math.PI);
     ctx.fillStyle = playersObjArr[i].playerColor;
     ctx.strokeText(playersObjArr[i].nick, playersObjArr[i].x + 10, playersObjArr[i].y);
     ctx.fill();
     ctx.stroke();
   }
-    ctx.fillStyle = "rgba(0,200,0,0.4)";
-    ctx.fillRect(0, 0, can.width, can.height);
+    
  }
  /*
  function startGame(){
