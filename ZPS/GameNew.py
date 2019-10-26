@@ -10,15 +10,19 @@ globalObj["playerCount"] = 0
 globalObj["bombId"] = 0
 globalObj["actualExpBombUser"] =  "NA"
 globalObj["kiledUser"] =  "NA"
-timerIsStarted = 0
+globalObj["timerIsStarted"] = 0
+globalObj["newBombVal"] = 30
+globalObj["newBombCntr"] = 5
+globalObj["boardSizeX"] = 800
+globalObj["boardSizeY"] = 600
+globalObj["bSeq"] = 1
+
 globalBombs = []
 xRng = 20
 yRng = 20
 
 class GameServer(WebSocket):
-
-      boardSizeX = 800
-      boardSizeY = 600
+   
       playerId = 0
       bombs = 5
       score = 0
@@ -29,16 +33,19 @@ class GameServer(WebSocket):
       def backGroundTasksPoints(self):
 
          if globalObj["actualExpBombUser"] ==  self.myUid and globalObj["kiledUser"] != self.myUid:
-            score  = score + 1
+            self.score  = self.score + 1
             globalObj["actualExpBombUser"] = "NA"
             globalObj["kiledUser"] = "NA"
-            print("Dobane punkty")
+            msgScore = {}
+            msgScore["msg_code"] = "current score"
+            msgScore["score"] = self.score
+            self.sendMessage(json.dumps(msgScore))
 
-         bckgTskPt = threading.Timer(0.5, self.backGroundTasksPoints) 
+         bckgTskPt = threading.Timer(0.1, self.backGroundTasksPoints) 
          bckgTskPt.start()
 
 
-      def backGroundTasksExplBoms(self):
+      def backGroundTasksAll(self):
          
          for bm in globalBombs:
             msgBomExplode = {}
@@ -61,12 +68,29 @@ class GameServer(WebSocket):
                for client in clients:
                   client.sendMessage(json.dumps(msgBomExplode))
                print("bomba wyb")
-         bckgTsk = threading.Timer(1.0, self.backGroundTasksExplBoms) 
-         bckgTsk.start()
-         timerIsStarted = 1
-         print("actual bombs cnt" + str(len(globalBombs)))
 
-      
+               
+         globalObj["newBombCntr"] =  globalObj["newBombCntr"] - 1
+         print("newBombCntr" + str(globalObj["newBombCntr"]))
+         if globalObj["newBombCntr"] <= 0:
+            msgNewBombBox = {}
+            msgNewBombBox["msg_code"] = "new_bomb_box"
+            bid =  "BMB" + str(globalObj["bSeq"])
+            msgNewBombBox["box_uid"] = bid
+            msgNewBombBox["x"] = random.randint(1, globalObj["boardSizeX"])
+            msgNewBombBox["y"] = random.randint(1, globalObj["boardSizeY"])
+            globalObj["newBombCntr"] = globalObj["newBombVal"]
+            globalObj["bSeq"] = globalObj["bSeq"] + 1
+            globalObj[bid] = "ACT"
+            print("Nowa bomba")
+            for client in clients:
+               client.sendMessage(json.dumps(msgNewBombBox))
+
+
+         bckgTsk = threading.Timer(1.0, self.backGroundTasksAll) 
+         bckgTsk.start()
+         globalObj["timerIsStarted"] = 1
+         print("actual bombs cnt" + str(len(globalBombs)))
 
       def checkPlayer(self, msg):
          #print(msg)
@@ -74,8 +98,8 @@ class GameServer(WebSocket):
          if msg["uid"] == "":
             self.myUid = "ID" + str(globalObj["playerCount"])
             msgWelcome["msg_code"] = "welcome_msg"
-            msgWelcome['size_x'] = self.boardSizeX
-            msgWelcome["size_y"] = self.boardSizeY
+            msgWelcome['size_x'] = globalObj["boardSizeX"]
+            msgWelcome["size_y"] = globalObj["boardSizeY"]
             msgWelcome["client_uid"] = self.myUid
             msgWelcome["bombs_amount"] = self.bombs
             msgWelcome["current_score"] = self.score
@@ -109,6 +133,7 @@ class GameServer(WebSocket):
          bmb["toExplode"] = msg["time_to_explode"]
          bmb["active"] = "yes"
          bmb["userId"] = self.myUid
+         self.bombs = self.bombs - 1
          globalBombs.append(bmb)
 
          for client in clients:
@@ -131,15 +156,26 @@ class GameServer(WebSocket):
             self.resendBombIsPlanted(msgFromPlayer)
 
          if msgFromPlayer["msg_code"] == "bomb_killed_me":
-            globalObj["kiledUser"] = selfmyUid
-         #for client in clients:
-         #   if client != self:
-         #      client.sendMessage(self.address[0] + u' - ' + self.data)
+            globalObj["kiledUser"] = self.myUid
+            msgPosition = {}
+            msgPosition["x"] = -100
+            msgPosition["y"] = -100
+            self.resendPlayerPosition(msgPosition)
+
+         if msgFromPlayer["msg_code"] == "collected_new_box_bomb":
+            bmbBoxid = msgFromPlayer["box_uid"]
+            if globalObj[bmbBoxid] == "ACT":
+               self.bombs = self.bombs + 1
+               globalObj[bmbBoxid] = "NA"
+               msgBombs = {}
+               msgBombs["msg_code"] = "bomb_amount"
+               msgBombs["amount"] = self.bombs
+               self.sendMessage(json.dumps(msgBombs))
 
       def handleConnected(self):
-         if timerIsStarted == 0:
-            self.backGroundTasksExplBoms()
-            self.backGroundTasksPoints()
+         if globalObj["timerIsStarted"] == 0:
+            self.backGroundTasksAll()
+         self.backGroundTasksPoints()
          print(self.address, 'connected')
          #for client in clients:
          #   client.sendMessage(self.address[0] + u' - connected')

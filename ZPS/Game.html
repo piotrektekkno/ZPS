@@ -9,7 +9,7 @@
   var serverAddresTxt;
   var nickTxt;
   var serverConnStatusTxt;
-  var playerConnected = false; 
+  var playerConnected = false;
   var playerUid;
   var playerNick = '';
   var uidTxt = "";
@@ -18,12 +18,14 @@
   var c_width_init = 100, c_height_init = 100;
   var playersObjArr = [];
   var bomsObjArr = [];
+  var bomsToReachArr = [];
   var arrayColors = ["orange", "black", "silver", "yellow", "red"];
 
   var oJsonConnecOut = {"msg_code":"connect", uid:"", nick:""};
   var oJsonKilledMe = {"msg_code":"bomb_killed_me"};
   var oJsonWelcomeMsgIn = new Object();
   var oJsonMyPositionOut = {"msg_code":"player_pos", "x":0, "y":0};
+  var oJsonBomTaken = {"msg_code":"collected_new_box_bomb", "box_uid":"NA"};
   var oJsonMPlayerPlantBombOut = {"msg_code":"player_plant_bomb", "x":0, "y":0, "time_to_explode": 0};
 
   function initGame(){
@@ -107,9 +109,10 @@
     if ( Math.abs(bomsObjArr[o.bomb_uid].x -x_pos) <= o.x_range &&
          Math.abs(bomsObjArr[o.bomb_uid].y -y_pos) <= o.y_range) {
       sendText(JSON.stringify(oJsonKilledMe))
-      x_pos = -10;
-      y_pos = -10;
-      alert("Zostales zabity")
+      x_pos = -100;
+      y_pos = -100;
+      draw();
+      alert("Zostales zabity");
     }
     draw();
   }
@@ -146,6 +149,23 @@
     sendText(JSON.stringify(oJsonMPlayerPlantBombOut))
   
   }
+
+  function addScore(obj){
+    pointsTxt.value = obj.score;
+  }
+
+  function newBombBox(obj){
+    bomsToReachArr[obj.box_uid]= obj;
+    bomsToReachArr[obj.box_uid].taken = false;
+    draw();
+
+  }
+
+  function newBombAmount(obj){
+    bombsTxt.value = obj.amount;
+  }
+
+
 
   function doConnect(){
     websocket = new WebSocket(serverAddres);
@@ -185,7 +205,18 @@
     if(o.msg_code == 'Bomb exploded'){
       bombExploded(o);
     }
-    
+
+    if(o.msg_code == 'current score'){
+      addScore(o);
+    }
+
+    if(o.msg_code == 'new_bomb_box'){
+      newBombBox(o);
+    }
+
+    if(o.msg_code == 'bomb_amount'){
+      newBombAmount(o);
+    }
   }
 
   function onError(evt)
@@ -273,16 +304,35 @@ function keyPressed(e){
     if(x_pos < can.width )
        x_pos++;
   }
+  else if (e.keyCode == '84') {
+    lookingForBombPack();
+  }
   else if (e.keyCode == '32') {
       putBomb();
       return;
   }
+
+
   draw();
   positionText.value = "x(" + x_pos + ")  y(" + y_pos + ")";
   oJsonMyPositionOut.x = x_pos;
   oJsonMyPositionOut.y = y_pos;
   sendText(JSON.stringify(oJsonMyPositionOut))
-}  
+}
+
+function lookingForBombPack(){
+  for( b in bomsToReachArr ){
+    if(Math.abs(bomsToReachArr[b].x - x_pos) < 30 && Math.abs(bomsToReachArr[b].y - y_pos) < 30){
+      bomsToReachArr[b].taken = true;
+      oJsonBomTaken.box_uid = bomsToReachArr[b].box_uid;
+      sendText(JSON.stringify(oJsonBomTaken))
+      bomsToReachArr[b].x = -100
+      bomsToReachArr[b].y = -100;
+      draw();
+
+    }
+  }
+}
 
 function draw() {
 
@@ -309,6 +359,17 @@ function draw() {
       ctx.strokeText("M", bomsObjArr[b].x + 10, bomsObjArr[b].y);
     }
   }
+
+  for (var b in bomsToReachArr){
+    if(bomsToReachArr[b].x > 0 && bomsToReachArr[b].y > 0 && bomsToReachArr[b].taken == false ){
+      ctx.beginPath();
+      ctx.font = "30px Wingdings";
+      ctx.fillStyle = "red";
+      ctx.strokeText("x", bomsToReachArr[b].x, bomsToReachArr[b].y);
+    }
+
+  }
+  
   
   for (var i in playersObjArr) {
     ctx.beginPath();
@@ -321,6 +382,8 @@ function draw() {
   }
     
  }
+
+
  /*
  function startGame(){
    //initGame();
