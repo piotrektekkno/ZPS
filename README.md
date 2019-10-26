@@ -9,3 +9,4 @@ Zaawansowane Programowanie Sieciowe - projekt
 - Przy sterowaniu strzalkami dane o pozycji są wysylane na serwer oraz wyswietlane
 - Połaczenie z serwerem powinno nastąpic po otworzeniu Game.html
  -Plik serwera GameNew.py
+ -T zbieranie bomb
