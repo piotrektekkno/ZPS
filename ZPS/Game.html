@@ -36,6 +36,8 @@
     bombsTxt = document.getElementById('bombsTxt');
     uidTxt = document.getElementById('uidTxt');
     bombExplodeTimeTxt = document.getElementById('bombExplodeTime');
+    startGameButton = document.getElementById("starGame");
+    
     serverAddresTxt.value = serverAddres;
     doConnect();
   }
@@ -68,13 +70,20 @@
       return false;
       
     oJsonConnecOut.nick = nickTxt.value;
-    //doConnect();
-    //alert("Dołacznie do gry");
+    if(uidTxt.value){
+      oJsonConnecOut.uid = uidTxt.value;
+    }
+    if(playerConnected == false){
+     doConnect();
+     alert("Dołącznie do gry");
+    }
     if(playerConnected){      
       sendText(JSON.stringify(oJsonConnecOut));
     } else {
       alert("Nie jestes połączony z serwerem");
+      return;
     }
+    startGameButton.disabled = true;
   }
 
   function drawOtherPlayers(o){
@@ -252,7 +261,7 @@
 
 <canvas id="canvas" style="background:rgba(0, 200, 0, 1)">Your browser does not support the canvas element.</canvas>
 <br>
-<br><input type="button" name=starGame value="Start" onClick="startGame()" >
+<br><input type="button" id=starGame value="Start" onClick="startGame()" >
 <input type="button" name=endGame value="Koniec" onClick="endGame();" >
 <b>Nick:</b><input type="text"  id="nickTxt" value="" onClick="getNick();">
 <b>Status połaczenia: </b><input type="text" readonly id="serverConnStatusTxt" value="Niepołączony">
@@ -393,6 +402,7 @@ function draw() {
  */
 
  function endGame(){
+  startGameButton.disabled = false;
   doDisconnect();
  }
 

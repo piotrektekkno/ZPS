@@ -17,6 +17,11 @@ globalObj["boardSizeX"] = 800
 globalObj["boardSizeY"] = 600
 globalObj["bSeq"] = 1
 
+globalPlayersUid={}
+globalPlayersScore={}
+globalPlayersBombs={}
+globalPlayersNicks={}
+
 globalBombs = []
 xRng = 20
 yRng = 20
@@ -34,6 +39,7 @@ class GameServer(WebSocket):
 
          if globalObj["actualExpBombUser"] ==  self.myUid and globalObj["kiledUser"] != self.myUid:
             self.score  = self.score + 1
+            globalPlayersScore[self.myUid] = self.score
             globalObj["actualExpBombUser"] = "NA"
             globalObj["kiledUser"] = "NA"
             msgScore = {}
@@ -100,13 +106,30 @@ class GameServer(WebSocket):
             msgWelcome["msg_code"] = "welcome_msg"
             msgWelcome['size_x'] = globalObj["boardSizeX"]
             msgWelcome["size_y"] = globalObj["boardSizeY"]
-            msgWelcome["client_uid"] = self.myUid
+            msgWelcome["client_uid"]  = self.myUid
             msgWelcome["bombs_amount"] = self.bombs
             msgWelcome["current_score"] = self.score
-            self.sendMessage(json.dumps(msgWelcome))
+            globalPlayersUid[self.myUid] = self.myUid
+            globalPlayersScore[self.myUid] = self.score
+            globalPlayersBombs[self.myUid] = self.bombs
+            globalPlayersNicks[self.myUid] = self.myNick
+            
             globalObj["playerCount"] = globalObj["playerCount"] + 1
             self.myNick = msg["nick"]
-
+            
+         if msg["uid"] != "" and globalPlayersUid[msg["uid"]] != "":
+            msgWelcome["msg_code"] = "welcome_msg"
+            msgWelcome['size_x'] = globalObj["boardSizeX"]
+            msgWelcome["size_y"] = globalObj["boardSizeY"]
+            self.myUid = globalPlayersUid[msg["uid"]]
+            self.bombs = globalPlayersBombs[msg["uid"]]
+            self.score = globalPlayersScore[msg["uid"]]
+            msgWelcome["client_uid"]  = self.myUid
+            msgWelcome["bombs_amount"] = self.bombs
+            msgWelcome["current_score"] = self.score
+            self.myNick = msg["nick"]
+            
+         self.sendMessage(json.dumps(msgWelcome))
       def resendPlayerPosition(self, msg):
          msgPosition = {}
          msgPosition["msg_code"] = "player_pos"
@@ -134,7 +157,8 @@ class GameServer(WebSocket):
          bmb["active"] = "yes"
          bmb["userId"] = self.myUid
          self.bombs = self.bombs - 1
-         globalBombs.append(bmb)
+         globalPlayersBombs[self.myUid] = self.bombs
+         globalBombs.append(bmb) 
 
          for client in clients:
             client.sendMessage(json.dumps(msgPuttedBombPosition))
@@ -167,6 +191,7 @@ class GameServer(WebSocket):
             if globalObj[bmbBoxid] == "ACT":
                self.bombs = self.bombs + 1
                globalObj[bmbBoxid] = "NA"
+               globalPlayersBombs[self.myUid] = self.bombs
                msgBombs = {}
                msgBombs["msg_code"] = "bomb_amount"
                msgBombs["amount"] = self.bombs
